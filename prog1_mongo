@@ -1,0 +1,242 @@
+--insert queries
+db.professor.insertMany([
+{
+profid: 1,
+name: "Professor A",
+age: 40,
+rank_val: 1,
+research: "AI",
+works_on_projects: [1, 2]
+},
+{
+profid: 2,
+name: "Professor B",
+age: 45,
+rank_val: 2,
+research: "Machine Learning",
+works_on_projects: [2]
+},
+{
+profid: 3,
+name: "Professor C",
+age: 38,
+rank_val: 3,
+research: "IOT",
+works_on_projects: [1, 2, 3]
+}
+]);
+
+db.project.insertMany([
+{
+pno: 1,
+sponsor: 'UGC',
+sdate: new Date('2023-01-01'),
+edate: new Date('2023-12-31'),
+budget: 150000,
+p_investigator: 1
+},
+{
+pno: 2,
+sponsor: 'AICTE',
+sdate: new Date('2008-05-01'),
+edate: new Date('2011-04-30'),
+budget: 150000,
+p_investigator: 2
+},
+{
+pno: 3,
+sponsor: 'UGC',
+sdate: new Date('2007-03-01'),
+edate: new Date('2023-12-31'),
+budget: 90000,
+p_investigator: 3
+}
+]);
+
+db.student.insertMany([
+{
+usn: 1002,
+sname: 'Student Y',
+age: 24,
+degree: 'M.Phil',
+supervisor: 2,
+projects: [1, 2]
+},
+{
+usn: 1001,
+sname: 'Student X',
+age: 25,
+degree: 'MCA',
+supervisor: 1,
+projects: [1]
+},
+{
+usn: 1003,
+sname: 'Student Z',
+age: 26,
+degree: 'BE',
+supervisor: 3,
+projects: [1, 2, 3]
+}
+]);
+
+--Queries
+
+Retrieve the names of all professors who do not have an ongoing project of more than 1 lakh.
+
+db.professor.aggregate([
+  {
+    $lookup: {
+      from: "project",
+      localField: "profid",
+      foreignField: "p_investigator",
+      as: "result"
+    }
+  },
+  {
+    $unwind: "$result"
+  },
+  {
+    $match: {
+      $and: [
+        {
+          "result.edate": { $gte: new Date() }
+        },
+        {
+          "result.budget": { $lt: 100000 }
+        }
+      ]
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1
+    }
+  }
+]);
+
+Retrieve the names of all graduate students along with their professors under whom they work and project sponsor.
+
+
+db.professor.aggregate([
+{
+	$lookup:{
+		from:"student",
+		localField:"profid",
+		foreignField:"supervisor",
+		as:"students"
+	}
+},
+{
+	$lookup:{
+		from:"project",
+		localField:"profid",
+		foreignField:"p_investigator",
+		as:"projects"
+	}
+},
+{
+	$project:{
+		_id:0,
+		name:1,
+		"students.sname":1,
+		"projects.sponsor":1
+	}
+}
+])
+
+
+List the professors and sum of the budget of their projects started after 2005 but ended in 2010.
+
+
+db.professor.aggregate([
+{
+	$lookup:{
+		from:"project",
+		localField:"profid",
+		foreignField:"p_investigator",
+		as:"projects"
+	}
+},
+{
+	$match:{
+		$and:[
+			{
+				"projects.sdate":{ $gt:new Date('2005-01-01') }
+			},
+			{
+				"projects.edate":{ $lt:new Date('2011-01-01') }
+			}
+		]
+	}
+},
+{
+	$unwind:"$projects"
+},
+{
+	$group:{
+		_id:"$profid",
+		total_budget:{$sum:"$projects.budget"}
+	}
+},
+{
+	$lookup:{
+		from:"professor",
+		localField:"_id",
+		foreignField:"profid",
+		as:"result"
+	}
+}
+])
+
+
+List the names of professors who has a total worth of project greater than the average budget of projects sanctioned 
+
+
+const result = db.project.aggregate([
+  {
+    $group: {
+      _id: null,
+      avgBudget: { $avg: "$budget" }
+    }
+  }
+]);
+
+const averageBudget = result.toArray()[0].avgBudget;
+
+db.professor.aggregate([
+  {
+    $lookup: {
+      from: "project",
+      localField: "profid",
+      foreignField: "p_investigator",
+      as: "projects"
+    }
+  },
+  {
+    $unwind: "$projects"
+  },
+  {
+    $group: {
+      _id: "$profid",
+      total_budget: { $sum: "$projects.budget" },
+    }
+  },
+	{
+		$match:{
+			total_budget:{$gt:averageBudget}
+		}
+	}
+])
+
+
+List the professors who work on all projects
+
+db.professor.aggregate([
+{
+	$match:{
+		works_on_projects:{ $all:db.project.distinct("pno") }
+	}
+}
+]);

@@ -1,0 +1,171 @@
+// Creating collections and populating data using MongoDB shell
+
+// Override the _id manually
+
+// Inserting data into 'directors' collection
+db.directors.insertMany([
+    { _id: 302, name: 'S Krishna', dob: '1983-04-06', movies: [2, 7] },
+    { _id: 303, name: 'Santhosh Ananddram', dob: '1986-01-08', movies: [3, 6, 8] },
+    { _id: 304, name: 'Tharun Sudhir', dob: '1986-12-28', movies: [4, 6,7] },
+    { _id: 305, name: 'Chethan Kumar', dob: '1988-12-07', movies: [5, 6,7] }
+]);
+
+// Inserting data into 'movies' collection
+db.movies.insertMany([
+    { _id: 1, title: 'KGF: Chapter 2', yor: 2022, length: 180, genres: ['action'], directors: [302] },
+    { _id: 2, title: 'Pailwaan', yor: 2019, length: 155, genres: ['sports'], directors: [303] },
+    { _id: 3, title: 'Yuvarathnaa', yor: 2021, length: 160, genres: ['drama'], directors: [303] },
+    { _id: 4, title: 'Roberrt', yor: 2021, length: 145, genres: ['action'], directors: [304] },
+     { _id: 5, title: 'James', yor: 2022, length: 150, genres: ['thriller'], directors: [305] },
+    { _id: 6, title: 'Horror Movie 1', yor: 2012, length: 120, genres: ['horror'], directors: [302, 304,305] },
+    { _id: 7, title: 'Horror Movie 2', yor: 2012, length: 110, genres: ['horror'], directors: [305, 302,304] },
+    { _id: 8, title: 'Yash', yor: 2018, length: 156, genres: ['comedy'], directors: [303] }
+]);
+
+// Inserting data into 'actors' collection
+db.actors.insertMany([
+    { _id: 201, name: 'Yash', dob: '1986-01-08', movies: [1, 8] },
+    { _id: 202, name: 'Sudeep', dob: '1973-09-02', movies: [1] },
+    { _id: 203, name: 'Darshan', dob: '1976-10-16', movies: [2] },
+    { _id: 204, name: 'Puneeth Rajkumar', dob: '1975-03-17', movies: [] },
+    { _id: 205, name: 'Rakshit Shetty', dob: '1983-06-06', movies: [] }
+]);
+
+// Inserting data into 'production_companies' collection
+db.production_companies.insertMany([
+    { _id: 101, name: 'Hombale Films', address: 'Bangalore', movies: [1, 5,7] },
+    { _id: 102, name: 'PRK Productions', address: 'Bangalore', movies: [2] },
+    { _id: 103, name: 'Umapathy Films', address: 'Mysore', movies: [3, 4] }
+]);
+
+
+ a) List the details of horror movies released in 2012 and directed by more than 2 directors.
+
+
+db.movies.find({ genres: 'horror', yor: 2012, $expr: { $gt: [{ $size: '$directors' }, 2] } });
+
+b) Same name and title
+db.movies.aggregate([
+    {
+        $match: {
+            $or: [
+                { yor: { $gt: 2010 } },
+                { yor: { $lt: 2000 } }
+            ]
+        }
+    },
+    {
+        $lookup: {
+            from: "actors",
+            localField: "title",
+            foreignField: "name",
+            as: "actors"
+        }
+    },
+    {
+        $unwind: "$actors"
+    },
+    {
+        $match: {
+            $expr: {
+                $eq: ["$title", "$actors.name"]
+            }
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            actorName: "$actors.name",
+            movieName: "$title"
+        }
+    }
+]);
+
+
+
+
+// c) List the details of production companies producing maximum movies (consider the scenario if 2 productions produced the same number of movies).
+
+var x = db.production_companies
+  .aggregate([
+    { $project: { name: 1, noMovies: { $size: "$movies" } } },
+    { $group: { _id: null, max: { $max: "$noMovies" } } },
+  ])
+  .next().max;
+
+
+//   x willl be 3
+
+
+db.production_companies.find({ $expr : { $gte : [ {$size : "$movies"}, x ] } })
+
+
+
+
+
+
+
+
+// List the details of movies where director and actor have the same date of birth
+db.movies.aggregate([
+    {
+        $lookup: {
+            from: "directors",
+            localField: "directors",
+            foreignField: "_id",
+            as: "directorsInfo"
+        }
+    },
+    {
+        $lookup: {
+            from: "actors",
+            localField: "actors",
+            foreignField: "_id",
+            as: "actorsInfo"
+        }
+    },
+    {
+        $match: {
+            $expr: {
+                $and: [
+                    { $gt: [{ $size: "$directorsInfo" }, 0] },
+                    { $gt: [{ $size: "$actorsInfo" }, 0] },
+                    { $eq: ["$directorsInfo.dob", "$actorsInfo.dob"] }
+                ]
+            }
+        }
+    },
+    {
+        $project: {
+            title: 1,
+            directors: "$directorsInfo.name",
+            actors: "$actorsInfo.name"
+        }
+    }
+]);
+
+//e.  Retrieve the names of directors who directed all movies produced by Hombale Films (production company with _id: 101)
+db.movies.aggregate([
+    {
+        $match: {
+            directors: {
+                $all: [302, 304, 306] // director IDs for movies produced by Hombale Films
+            }
+        }
+    },
+    {
+        $lookup: {
+            from: "directors",
+            localField: "directors",
+            foreignField: "_id",
+            as: "directorsInfo"
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            "Directors of Hombale Films": "$directorsInfo.name"
+        }
+    }
+])
+

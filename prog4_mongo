@@ -1,0 +1,67 @@
+db.TouristPlaces.insertMany([
+  { _id: 1, name: "Tourist Place 1", state: "KARNATAKA", distance_from_capital: 100, history: "Historical Site 1" },
+  { _id: 2, name: "Tourist Place 2", state: "KARNATAKA", distance_from_capital: 150, history: "Historical Site 2" },
+  // ... other Tourist Places
+]);
+
+db.Tourists.insertMany([
+  { _id: 1, name: "Tourist A", age: 25, country: "India", emailIds: ["emailA@example.com"] },
+  { _id: 2, name: "Tourist B", age: 30, country: "USA", emailIds: ["emailB@example.com"] },
+  // ... other Tourists
+]);
+
+db.TouristVisits.insertMany([
+  { tourist_id: 1, place_id: 1, visit_date: ISODate("2023-01-15") },
+  { tourist_id: 1, place_id: 2, visit_date: ISODate("2023-02-20") },
+  // ... other Tourist Visits
+]);
+
+
+1: List the state name which is having maximum number of tourist
+places.
+db.TouristPlaces.aggregate([
+  { $group: { _id: "$state", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 1 }
+]);
+
+
+2: List details of touristplace where maximum number of tourist
+visited.
+db.TouristVisits.aggregate([
+  { $group: { _id: "$place_id", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 1 },
+  {
+    $lookup: {
+      from: "TouristPlaces",
+      localField: "_id",
+      foreignField: "_id",
+      as: "touristPlaceDetails"
+    }
+  },
+  { $unwind: "$touristPlaceDetails" },
+  { $project: { _id: "$touristPlaceDetails._id", name: "$touristPlaceDetails.name", state: "$touristPlaceDetails.state", num_visits: "$count" } }
+]);
+
+
+
+3List details of tourist visited all tourist places of the KARNATAKA.
+db.Tourists.find({
+  _id: {
+    $nin: db.TouristVisits.distinct("tourist_id", { place_id: { $nin: db.TouristPlaces.find({ state: "KARNATAKA" }).map(function(doc) { return doc._id; }) } })
+  }
+});
+
+5:Display the details of the tourist place visited by the tourists of
+all country.
+
+db.TouristPlaces.find({
+  _id: {
+    $in: db.TouristVisits.distinct("place_id", { tourist_id: { $in: db.Tourists.distinct("_id", { country: { $nin: ["India", "USA"] } }) } })
+  }
+});
+
+
+
+

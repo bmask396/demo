@@ -1,0 +1,28 @@
+1: List the state name which is having maximum number of tourist
+places.
+mysql> select state, count(tplaceid) from touristplace group by state order
+by count(tplaceid) desc limit 1;
+
+2: List details of touristplace where maximum number of tourist
+visited.
+mysql> select tp.tplaceid,tp.tplacename,tp.state,count(tv.touristid) from
+touristplace tp,tourist_visited_places tv where tv.tplaceid=tp.tplaceid
+group by tv.tplaceid order by count(tv.touristid) desc limit 1;
+
+3List details of tourist visited all tourist places of the KARNATAKA.
+mysql> select tv.touristid,count(tv.touristid) as no_of_places from
+tourist_visited_places tv ,touristplace tp where tp.tplaceid=tv.tplaceid and
+state="karnataka" group by tv.touristid having count(tv.touristid)>=(select
+count(tplaceid) from touristplace where state="karnataka");\
+
+4)Display the details of the tourists visited atleast one tourist place
+of the state, but visited all states tourist places.
+mysql> select touristid,count(distinct tplaceid) from
+tourist_visited_places group by touristid having count(distinct
+tplaceid)>=(select count(distinct state) from touristplace)
+
+5:Display the details of the tourist place visited by the tourists of
+all country.
+list out the no.of.countries
+mysql> select count(distinct country) as no_of_countries from touristplace;
+

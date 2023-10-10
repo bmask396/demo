@@ -1,0 +1,98 @@
+mysql> create table bank(code varchar(10) primary key,name varchar(20),address varchar(20),phone long);
+
+mysql> select * from bank;
+
+mysql> create table branch(id int primary key,name varchar(100),address varchar(100),phone long,b_code varchar(10), foreign key(b_code) references bank(code));
+
+mysql> select * from branch;
+
+mysql> create table account(ac_no int primary key,ac_type varchar(10), balance int, bid int, foreign key(bid) references branch(id));
+Query OK, 0 rows affected (0.09 sec)
+mysql> select * from account;
+
+mysql> create table customers(ssn int primary key,name varchar(20), address varchar(20),phone long,age int);
+Query OK, 0 rows affected (0.09 sec)
+mysql> select * from customers;
+           
+mysql> create table cust_ac(acc_no int, ssn int, foreign key(acc_no) references account(ac_no), foreign key(ssn) references customers(ssn));
+Query OK, 0 rows affected (0.14 sec)
+
+
+mysql> select * from cust_ac;
+
+create table loan(lno int primary key,duration int,interest float,amount int,bid int(11),foreign key(bid) references branch(id));
+Query OK, 0 rows affected (0.13 sec)
+mysql> select * from loan;
+
+mysql> create table cust_loan(lno int,ssn int, foreign key(lno) references loan(lno), foreign key(ssn) references customers(ssn));
+Query OK, 0 rows affected (0.13 sec)
+mysql> select * from cust_loan;
+                       
+INSERT INTO bank (code, name, address, phone) VALUES 
+('SBI', 'State Bank of India', 'Bangalore', 1234567890),
+('HDFC', 'HDFC Bank', 'Mumbai', 9876543210);
+
+INSERT INTO branch (id, name, address, phone, b_code) VALUES
+(1, 'SBI Bangalore Main', 'Bangalore Main Street', 1111111111, 'SBI'),
+(2, 'SBI Bangalore Branch 2', 'Bangalore Street 2', 2222222222, 'SBI'),
+(3, 'HDFC Mumbai Main', 'Mumbai Main Street', 3333333333, 'HDFC');
+
+INSERT INTO account (ac_no, ac_type, balance, bid) VALUES
+(1, 'joint', 1000, 1),
+(2, 'sb', 500, 1),
+(3, 'joint', 1500, 2),
+(4, 'sb', 200, 3);
+
+INSERT INTO customers (ssn, name, address, phone, age) VALUES
+(123456789, 'Alice', 'Address 1', 1111111111, 25),
+(234567890, 'Bob', 'Address 2', 2222222222, 30),
+(345678901, 'Charlie', 'Address 3', 3333333333, 35),
+(456789012, 'David', 'Address 4', 4444444444, 40);
+
+INSERT INTO cust_ac (acc_no, ssn) VALUES
+(1, 123456789),
+(2, 123456789),
+(3, 234567890),
+(4, 345678901);
+
+INSERT INTO loan (lno, duration, interest, amount, bid) VALUES
+(1, 12, 5.5, 2000, 1),
+(2, 24, 6.2, 3000, 2),
+(3, 18, 5.8, 2500, 3),
+(4, 36, 7.0, 4000, 1);
+
+INSERT INTO cust_loan (lno, ssn) VALUES
+(1, 123456789),
+(2, 234567890),
+(3, 345678901),
+(4, 456789012);
+
+
+
+Queries:
+a)      List the details of customers who have a joint account and also have at least one loan.
+mysql> select c.* from customers c,account a,cust_loan cl,cust_ac ca where cl.ssn=c.ssn and c.ssn=ca.ssn and a.ac_type="joint" and ca.acc_no=a.ac_no;
+
+
+b)      List the details of the branch which has given the maximum loan.
+mysql> select * from branch where id=(select bid from loan where amount=(select max(amount) from loan));
+
+
+c)      List the details of saving accounts opened in the SBI branches located at Bangalore.
+
+mysql> SELECT a.* FROM account a JOIN branch b ON a.bid = b.id
+WHERE a.ac_type = 'sb' AND b.b_code = 'SBI' AND b.address LIKE '%Bangalore%';
+
+SELECT *  FROM account  WHERE ac_type = 'sb'  AND bid IN (SELECT id FROM branch WHERE b_code = 'SBI' AND address LIKE '%Bangalore%');
+
+
+d)     List the name of the branch along with its bank name and total amount of loan given by it.
+
+mysql> select b.name,br.name,sum(l.amount) from bank b,branch br,loan l where br.b_code=b.code and l.bid=br.id group by l.bid;
+
+e) Retrieve the names of customers who have accounts in all the branches located in a specific city.
+
+
+mysql> select c.name from customers c,cust_ac ac,account a,branch br where c.ssn=ac.ssn and a.ac_no=ac.acc_no and a.bid=br.id and br.address like "%bangalore%";
+
+

@@ -1,0 +1,24 @@
+  Retrieve  the  names  of  all  professors  who  do  not  have  an  ongoing  project  of  more  than 1 lakh.
+
+mysql> select p.name from professor p,project pr where pr.budjet>100000 and pr.investigator=p.pid;
+
+
+    Retrieve  the  names  of  all  graduate  students  along  with  their  professors  under  whom  they work  and project sponsor.
+
+mysql> select s.name,p.name,pr.sponsor from student s,professor p,project pr where p.pid=s.supervisor and p.pid=pr.investigator;
+
+
+List the professors and sum of the budget of their projects started after 2005 but ended in 2010.
+
+mysql> select p.name,sum(distinct (budjet)) from professor p,project where sdate>="2005-01-01" and edate<="2010-04-10" and p.pid=investigator group by p.pid;
+
+
+ List the names of professors who has a total worth of project greater than the average budget of projects sanctioned
+
+mysql> select distinct p.name from professor p,project pr where pr.budjet > (select avg(budjet) from project) and p.pid=pr.investigator;
+
+
+  List the professors who work on all the projects.
+
+mysql> select distinct p.name from professor p, project pr where p.pid=pr.investigator;
+
